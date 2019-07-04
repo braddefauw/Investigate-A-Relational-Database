@@ -1,0 +1,68 @@
+/* Query 1 - query used for first insight */
+SELECT name, standard_quartile, COUNT(*)
+FROM (SELECT f.title AS title, c.name AS name, f.rental_duration AS rental_duration, NTILE(4) OVER (ORDER BY rental_duration) AS standard_quartile
+FROM category c
+JOIN film_category fc
+ON c.category_id = fc.category_id
+JOIN film f
+ON fc.film_id = f.film_id
+WHERE c.name = 'Animation' OR c.name = 'Children' OR c.name = 'Classics' OR c.name = 'Comedy' OR c.name = 'Family' OR c.name = 'Music') sub
+GROUP BY 1, 2
+ORDER BY 1, 2
+LIMIT 4;
+
+/* Query 2 - query used for second insight */
+WITH t1 AS (SELECT DATE_PART('month', r.rental_date) AS rental_month, DATE_PART('year', r.rental_date) AS rental_year, s.store_id
+FROM rental r
+JOIN staff s
+ON r.staff_id = s.staff_id)
+
+SELECT CONCAT(rental_year, '-', '0', rental_month) full_date, store_id, COUNT(*)
+FROM t1
+WHERE store_id = 1
+GROUP BY 1, 2
+ORDER BY 1;
+
+/*Query 3 - query used for third insight */
+WITH t1 AS (SELECT c.customer_id customer_id, (c.first_name || ' ' || c.last_name) full_name, SUM(p.amount) total_sales
+FROM customer c
+JOIN payment p
+ON c.customer_id = p.customer_id
+GROUP BY 1
+ORDER BY 3 DESC
+LIMIT 10)
+
+SELECT pay_mon, SUM(amount) pay_amount
+FROM (SELECT DATE_TRUNC('month', p.payment_date) pay_mon, full_name, p.amount amount
+FROM t1
+JOIN customer c
+ON c.customer_id = t1.customer_id
+JOIN rental r
+ON c.customer_id = r.rental_id
+JOIN payment p
+ON p.customer_id = c.customer_id) sub
+WHERE full_name = 'Ana Bradley'
+GROUP BY 1
+ORDER BY 1;
+
+/*Query 4 - query used for third insight */
+WITH t1 AS (SELECT c.customer_id customer_id, (c.first_name || ' ' || c.last_name) full_name, SUM(p.amount) total_sales
+FROM customer c
+JOIN payment p
+ON c.customer_id = p.customer_id
+GROUP BY 1
+ORDER BY 3 DESC
+LIMIT 10)
+
+SELECT full_name, pay_mon, LEAD(SUM(amount)) OVER (ORDER BY full_name) - SUM(amount) AS pay_difference
+FROM (SELECT DATE_TRUNC('month', p.payment_date) pay_mon, full_name, p.amount amount
+FROM t1
+JOIN customer c
+ON c.customer_id = t1.customer_id
+JOIN rental r
+ON c.customer_id = r.rental_id
+JOIN payment p
+ON p.customer_id = c.customer_id) sub
+WHERE full_name = 'Eleanor Hunt'
+GROUP BY 1, 2
+ORDER BY 2;
